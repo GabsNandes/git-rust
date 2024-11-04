@@ -1,11 +1,45 @@
-use std::env;
+use std::fs::File;
 use std::io::{self, Write};
+use std::{error::Error, process};
+use serde::{Deserialize, Serialize};
+use csv::Writer;
+use std::env;
 
 
+
+// By default, struct field names are deserialized based on the position of
+// a corresponding field in the CSV data's header record.
+#[derive(Debug, Deserialize, Serialize)]
 struct User {
     id: i32,
     name: String,
     email: String,
+}
+
+// Function to save users to a CSV file
+fn save_users_to_csv(users: &[User], file_path: &str) -> Result<(), Box<dyn Error>> {
+    let file = File::create(file_path)?;
+    let mut wtr = Writer::from_writer(file);
+
+    for user in users {
+        wtr.serialize(user)?;
+    }
+    wtr.flush()?;
+    Ok(())
+}
+
+fn load_users(file_path: &str) -> Result<Vec<User>, Box<dyn Error>>{
+
+    let file = File::open(file_path)?;
+    let mut rdr = csv::Reader::from_reader(file);
+    let mut users = Vec::new();
+    for result in rdr.deserialize() {
+        let user: User = result?;
+        users.push(user);
+    }
+    Ok(users)
+
+
 }
 
 
@@ -20,7 +54,7 @@ fn create_user_menu(users: &mut Vec<User>){
 
     io::stdin().read_line(&mut num).expect("Failed to read line");
 
-    let num: i32 = num.trim().parse().expect("REASON");;
+    let num: i32 = num.trim().parse().expect("REASON");
 
     print!("name: ");
     io::stdout().flush().unwrap();
@@ -61,9 +95,8 @@ fn read_user_menu(users: &[User]){
 
     io::stdin().read_line(&mut num).expect("Failed to read line");
 
-    let num: i32 = num.trim().parse().expect("REASON");;
+    let num: i32 = num.trim().parse().expect("REASON");
 
-    let Some(user) = read_user_by_id(&users, num) else { todo!() };;
     if let Some(user) = read_user_by_id(&users, num) {
         println!("Found user with ID {}: {}, {}", user.id, user.name, user.email);
     }
@@ -87,7 +120,7 @@ fn update_user_menu(users: &mut Vec<User>){
 
     io::stdin().read_line(&mut num).expect("Failed to read line");
 
-    let num: i32 = num.trim().parse().expect("REASON");;
+    let num: i32 = num.trim().parse().expect("REASON");
 
     print!("name: ");
     io::stdout().flush().unwrap();
@@ -124,7 +157,7 @@ fn delete_user_menu(users: &mut Vec<User>){
 
     io::stdin().read_line(&mut num).expect("Failed to read line");
 
-    let num: i32 = num.trim().parse().expect("REASON");;
+    let num: i32 = num.trim().parse().expect("REASON");
 
     delete_user(users, num);
     
@@ -140,9 +173,27 @@ fn delete_user(users: &mut Vec<User>, target_id: i32) -> bool {
     }
 }
 
+
 fn main(){
 
-    let mut users: Vec<User> = Vec::new();
+    // Retrieve the command-line arguments
+    let args: Vec<String> = env::args().collect();
+
+    // Ensure that a file path is provided
+    if args.len() < 2 {
+        eprintln!("Usage: cargo run <file_path>");
+        process::exit(1);
+    }
+
+    let file_path = &args[1];
+
+    let mut users: Vec<User> = match load_users(file_path) {
+        Ok(users) => users,
+        Err(err) => {
+            println!("Error loading users from CSV: {}", err);
+            process::exit(1);
+        }
+    };
     
     loop {
         let mut num = String::new();
@@ -165,14 +216,18 @@ fn main(){
             2 => read_user_menu(&users),
             3 => update_user_menu(&mut users),
             4 => delete_user_menu(&mut users),
+            5 => {
+                if let Err(err) = save_users_to_csv(&users, "users.csv") {
+                    println!("Error saving users to CSV: {}", err);
+                } else {
+                    println!("Users saved successfully to users.csv.");
+                }
+                break;
+            },
             _ => break,
         }
     }
-    
-    
 
     
-
     
-
 }
