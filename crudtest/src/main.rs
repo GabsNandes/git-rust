@@ -3,7 +3,6 @@ use std::io::{self, Write};
 use std::{error::Error, process};
 use serde::{Deserialize, Serialize};
 use csv::Writer;
-use std::env;
 
 
 
@@ -14,7 +13,63 @@ struct User {
     id: i32,
     name: String,
     email: String,
+    dateofbirth: String
 }
+
+fn id_generator(users: &[User]) -> i32{
+
+    if users.is_empty() {
+        return 1;
+    }
+    
+    let max_id = users.iter().map(|user| user.id).max().unwrap();
+    
+    max_id + 1
+
+
+
+}
+
+#[allow(unused_assignments)]
+fn check_email() -> String{
+
+
+    let mut input = String::new(); 
+    let mut trimmed_input = String::new(); 
+
+    loop{
+        print!("email: ");
+        
+        io::stdout().flush().unwrap();
+        input.clear();
+        io::stdin().read_line(&mut input).expect("Failed to read line");
+        trimmed_input = input.trim().to_string();
+
+        if trimmed_input.ends_with(".com") {
+            trimmed_input = trimmed_input.strip_suffix(".com").unwrap().to_string();
+        } 
+
+    
+        if &input.trim() == &trimmed_input {
+            
+            println!("invalid email, try again");
+
+        }else{
+            
+            if input.contains("@") {
+                break
+            }else{
+                println!("Invalid Email");
+                continue
+            }
+        }
+    }
+
+        input
+    }
+
+    
+
 
 // Function to save users to a CSV file
 fn save_users_to_csv(users: &[User], file_path: &str) -> Result<(), Box<dyn Error>> {
@@ -45,40 +100,40 @@ fn load_users(file_path: &str) -> Result<Vec<User>, Box<dyn Error>>{
 
 fn create_user_menu(users: &mut Vec<User>){
 
-    let mut num = String::new();
     let mut name = String::new();
-    let mut email = String::new();
+    let mut dateofbirth = String::new();
 
-    print!("ID: ");
-    io::stdout().flush().unwrap();
 
-    io::stdin().read_line(&mut num).expect("Failed to read line");
 
-    let num: i32 = num.trim().parse().expect("REASON");
+    let num: i32 = id_generator(users);
+    println!("ID: {}", num);
 
     print!("name: ");
     io::stdout().flush().unwrap();
 
     io::stdin().read_line(&mut name).expect("Failed to read line");
 
+    
+    let email = check_email();
 
-    print!("email: ");
+    print!("Date of birth: ");
     io::stdout().flush().unwrap();
 
-    io::stdin().read_line(&mut email).expect("Failed to read line");
+    io::stdin().read_line(&mut dateofbirth).expect("Failed to read line");
 
 
-    let new_user = create_user(num, name, email);
+    let new_user = create_user(num, name, email, dateofbirth);
     users.push(new_user)
 }
 
-fn create_user(id:i32, name:String, email:String) -> User{
+fn create_user(id:i32, name:String, email:String, dateofbirth: String) -> User{
 
     User{
 
         id:id,
         name:name,
-        email:email
+        email:email,
+        dateofbirth:dateofbirth
 
     }
 
@@ -98,7 +153,7 @@ fn read_user_menu(users: &[User]){
     let num: i32 = num.trim().parse().expect("REASON");
 
     if let Some(user) = read_user_by_id(&users, num) {
-        println!("Found user with ID {}: {}, {}", user.id, user.name, user.email);
+        println!("Found user with ID {}: {}, {}, {}", user.id, user.name, user.email, user.dateofbirth);
     }
 }
 
@@ -113,7 +168,7 @@ fn update_user_menu(users: &mut Vec<User>){
 
     let mut num = String::new();
     let mut name = String::new();
-    let mut email = String::new();
+    let mut dateofbirth = String::new();
 
     print!("ID: ");
     io::stdout().flush().unwrap();
@@ -127,22 +182,25 @@ fn update_user_menu(users: &mut Vec<User>){
 
     io::stdin().read_line(&mut name).expect("Failed to read line");
 
+    let email = check_email();
 
-    print!("email: ");
+    print!("Date: ");
     io::stdout().flush().unwrap();
 
-    io::stdin().read_line(&mut email).expect("Failed to read line");
+    io::stdin().read_line(&mut dateofbirth).expect("Failed to read line");
+    
 
-    update_user(users, num, &name, &email);
+    update_user(users, num, &name, &email, &dateofbirth);
 
 
 }
 
-fn update_user(users: &mut Vec<User>, target_id: i32, new_name: &str, new_email: &str){
+fn update_user(users: &mut Vec<User>, target_id: i32, new_name: &str, new_email: &str, new_dob: &str){
 
     if let Some(user) = users.iter_mut().find(|user| user.id == target_id) {
         user.name = new_name.to_string();
         user.email = new_email.to_string();
+        user.dateofbirth = new_dob.to_string();
     }
 
 }
@@ -176,18 +234,12 @@ fn delete_user(users: &mut Vec<User>, target_id: i32) -> bool {
 
 fn main(){
 
-    // Retrieve the command-line arguments
-    let args: Vec<String> = env::args().collect();
+    
 
-    // Ensure that a file path is provided
-    if args.len() < 2 {
-        eprintln!("Usage: cargo run <file_path>");
-        process::exit(1);
-    }
+    let file_path = String::from("users.csv");
 
-    let file_path = &args[1];
 
-    let mut users: Vec<User> = match load_users(file_path) {
+    let mut users: Vec<User> = match load_users(&file_path) {
         Ok(users) => users,
         Err(err) => {
             println!("Error loading users from CSV: {}", err);
