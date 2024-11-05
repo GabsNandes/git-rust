@@ -8,7 +8,7 @@ use csv::Writer;
 
 // By default, struct field names are deserialized based on the position of
 // a corresponding field in the CSV data's header record.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct User {
     id: i32,
     name: String,
@@ -282,4 +282,93 @@ fn main(){
 
     
     
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_read_user_test() {
+        let num = 69;
+        let name = "Gabriel";
+        let email = "gb@jhan.com";
+        let dateofbirth="23/05?2001";
+        let value = create_user(num, name.to_string(), email.to_string(), dateofbirth.to_string());
+        
+        
+
+        if let Some(user) = read_user_by_id(&[value], num) {
+            assert_eq!(user.name, name);
+            assert_eq!(user.email, email);
+            assert_eq!(user.dateofbirth, dateofbirth);
+        }
+
+
+    }
+
+    #[test]
+    fn update_read_user_test() {
+
+        let num = 2;
+        
+        
+        let new_name = "Gabriel Maga";
+        let new_email = "gabbb@jhan.com";
+        let new_dateofbirth="23/05/2001";
+
+        let mut users: Vec<User> = Vec::new();
+
+        let name = "Gabriel";
+        let email = "gb@jhan.com";
+        let dateofbirth="23/05?2001";
+        let value = create_user(num, name.to_string(), email.to_string(), dateofbirth.to_string());
+        users.push(value.clone());
+
+        update_user(&mut users, num, &new_name, &new_email, &new_dateofbirth);
+        
+
+        if let Some(user) = read_user_by_id(&users, num) {
+            assert_eq!(user.name, new_name);
+            assert_eq!(user.email, new_email);
+            assert_eq!(user.dateofbirth, new_dateofbirth);
+        }
+
+
+    }
+
+    #[test]
+    
+    fn delete_user_test() {
+        let num = 69;
+        let name = "Gabriel";
+        let email = "gb@jhan.com";
+        let dateofbirth="23/05?2001";
+
+        let mut users: Vec<User> = Vec::new();
+
+
+        let value = create_user(num, name.to_string(), email.to_string(), dateofbirth.to_string());
+        
+        users.push(value.clone());
+
+        let deleted = delete_user(&mut users, num);
+
+        if let Some(user) = read_user_by_id(&[value], num) {
+            assert_eq!(user.name, name);
+            assert_eq!(user.email, email);
+            assert_eq!(user.dateofbirth, dateofbirth);
+        }
+
+        assert_eq!(deleted, true);
+
+
+
+
+
+
+
+    }
+
 }
