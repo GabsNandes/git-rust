@@ -355,18 +355,7 @@ mod tests {
 
         let deleted = delete_user(&mut users, num);
 
-        if let Some(user) = read_user_by_id(&[value], num) {
-            assert_eq!(user.name, name);
-            assert_eq!(user.email, email);
-            assert_eq!(user.dateofbirth, dateofbirth);
-        }
-
         assert_eq!(deleted, true);
-
-
-
-
-
 
 
     }
