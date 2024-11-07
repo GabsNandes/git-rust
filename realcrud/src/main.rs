@@ -1,8 +1,10 @@
 use postgres::{Client, NoTls};
 use postgres::Error as PostgresError;
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::env;
+use serde_json::json;
+use std::error::Error;
 
 #[macro_use]
 extern crate serde_derive;
@@ -19,6 +21,70 @@ struct User {
 const OK_RESPONSE: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
+
+fn create_user_menu(db_url: &str){
+
+    let mut name = String::new();
+    let mut email = String::new();
+    
+
+    print!("name: ");
+    io::stdout().flush().unwrap();
+
+    io::stdin().read_line(&mut name).expect("Failed to read line");
+
+    
+    print!("Email: ");
+    io::stdout().flush().unwrap();
+
+    io::stdin().read_line(&mut email).expect("Failed to read line");
+
+
+    
+    post_user(&db_url, &name, &email);
+}
+
+fn post_user(db_url: &str, name: &str, email:&str) -> Result<String, Box<dyn Error>> {
+    // Connect to the database
+    let mut client = Client::connect(db_url, NoTls)?;
+
+    // Insert the new user into the database
+    let result = client.execute(
+        "INSERT INTO users (name, email) VALUES ($1, $2)",
+        &[&name, &email],
+    );
+
+    // Check if the insertion was successful
+    match result {
+        Ok(_) => Ok("User created successfully".to_string()),
+        Err(e) => Err(Box::new(e)), // Return error if the insert fails
+    }
+}
+
+fn get_user_by_id(db_url: &str, user_id: i32) -> Result<String, Box<dyn Error>> {
+    
+    let mut client = Client::connect(db_url, NoTls)?;
+
+    // Query for the user
+    let result = client.query_opt("SELECT id, name, email FROM users WHERE id = $1", &[&user_id]);
+
+    // Check if the user exists
+    match result {
+        Ok(Some(row)) => {
+            // Create a User struct to hold the result
+            let user = json!({
+                "id": row.get::<_, i32>(0),
+                "name": row.get::<_, String>(1),
+                "email": row.get::<_, String>(2),
+            });
+
+            // Return the user as a JSON string
+            Ok(user.to_string())
+        }
+        Ok(None) => Ok("User not found".to_string()), // Return a message if user doesn't exist
+        Err(e) => Err(Box::new(e)), // Return error if query fails
+    }
+}
 
 fn main() {
     // Retrieve DATABASE_URL at runtime
@@ -40,6 +106,26 @@ fn main() {
     let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
     println!("Server listening on port 8080");
 
+    let user_id = 1;
+
+    let name= "teste";
+    let email= "test@example.com".to_string();
+    
+
+    // Call the function to add the new user
+    match post_user(&db_url, &name, &email) {
+        Ok(response) => println!("{}", response),
+        Err(e) => eprintln!("Error creating user: {}", e),
+    }
+
+    match get_user_by_id(&db_url, user_id) {
+        Ok(response) => println!("{}", response),
+        Err(e) => eprintln!("Error retrieving user: {}", e),
+    }
+
+    create_user_menu(&db_url);
+
+    
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -60,8 +146,10 @@ fn handle_client(mut stream: TcpStream, db_url: &str) {
     match stream.read(&mut buffer) {
         Ok(size) => {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
-
+            println!("{}", request);
             let (status_line, content) = match &*request {
+
+                
                 r if r.starts_with("POST /users") => handle_post_request(r, db_url),
                 r if r.starts_with("GET /users/") => handle_get_request(r, db_url),
                 r if r.starts_with("GET /users") => handle_get_all_request(r, db_url),
