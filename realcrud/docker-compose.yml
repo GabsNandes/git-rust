@@ -13,6 +13,8 @@ services:
       - '8080:8080'
     depends_on:
       - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres # Set DATABASE_URL at runtime
 
   db:
     container_name: db
