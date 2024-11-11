@@ -22,26 +22,43 @@ const OK_RESPONSE: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
 
+
+//Menus:
+
 fn create_user_menu(db_url: &str){
 
     let mut name = String::new();
     let mut email = String::new();
-    
+
 
     print!("name: ");
     io::stdout().flush().unwrap();
-
     io::stdin().read_line(&mut name).expect("Failed to read line");
 
     
     print!("Email: ");
     io::stdout().flush().unwrap();
-
     io::stdin().read_line(&mut email).expect("Failed to read line");
 
 
     
     post_user(&db_url, &name, &email);
+}
+
+fn read_user_menu(db_url: &str){
+
+    let mut num = String::new();
+    
+
+    print!("ID: ");
+    io::stdout().flush().unwrap();
+
+    io::stdin().read_line(&mut num).expect("Failed to read line");
+
+    let num: i32 = num.trim().parse().expect("REASON");
+
+    get_user_by_id(&db_url, num);
+    
 }
 
 fn post_user(db_url: &str, name: &str, email:&str) -> Result<String, Box<dyn Error>> {
@@ -106,26 +123,29 @@ fn main() {
     let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
     println!("Server listening on port 8080");
 
-    let user_id = 1;
+    loop {
 
-    let name= "teste";
-    let email= "test@example.com".to_string();
-    
+        print!("Escolha uma opção: ");
 
-    // Call the function to add the new user
-    match post_user(&db_url, &name, &email) {
-        Ok(response) => println!("{}", response),
-        Err(e) => eprintln!("Error creating user: {}", e),
-    }
+        
+        io::stdout().flush().unwrap(); // Make sure the prompt is displayed
 
-    match get_user_by_id(&db_url, user_id) {
-        Ok(response) => println!("{}", response),
-        Err(e) => eprintln!("Error retrieving user: {}", e),
-    }
-
-    create_user_menu(&db_url);
+        let mut num = String::new();
+        io::stdin().read_line(&mut num).unwrap(); // Read input from user
 
     
+        let num = num.trim(); 
+    
+        match num {
+            "1" => create_user_menu(&db_url),
+            "2" => read_user_menu(&db_url),
+            _ => {
+                println!("Saindo...");
+                break;
+            },
+        }
+    }
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -136,6 +156,7 @@ fn main() {
             }
         }
     }
+    
 }
 
 // Handle client requests

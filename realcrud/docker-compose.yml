@@ -1,9 +1,6 @@
-version: '3.9'
-
 services:
   rustapp:
     container_name: rustapp
-    image: library/rust
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,10 +8,12 @@ services:
         DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
     ports:
       - '8080:8080'
+    stdin_open: true
+    tty: true
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres # Set DATABASE_URL at runtime
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
 
   db:
     container_name: db
