@@ -15,6 +15,8 @@ struct User {
     id: Option<i32>,
     name: String,
     email: String,
+    password: String,
+    date: String
 }
 
 // Constants
@@ -28,6 +30,8 @@ const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
 fn create_user_menu(db_url: &str){
 
     let mut name = String::new();
+    let mut password = String::new();
+    let mut date = String::new();
 
 
     print!("name: ");
@@ -37,9 +41,19 @@ fn create_user_menu(db_url: &str){
     
     let email = check_email();
 
+    print!("date of creation: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut date).expect("Failed to read line");
+    date = date.trim().to_string();
+
+    print!("password: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut password).expect("Failed to read line");
+    password = password.trim().to_string();
+
 
     
-    match post_user(&db_url, &name, &email){
+    match post_user(&db_url, &name, &email, &password, &date){
 
         Ok(result)=>{
 
@@ -55,6 +69,7 @@ fn read_user_menu(db_url: &str){
 
     let mut num = String::new();
     let mut choice = String::new();
+    let mut password = String::new();
 
     print!("1- By id, else all users: ");
     
@@ -74,8 +89,13 @@ fn read_user_menu(db_url: &str){
         io::stdin().read_line(&mut num).expect("Failed to read line");
     
         let num: i32 = num.trim().parse().expect("REASON");
+
+        print!("password: ");
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut password).expect("Failed to read line");
+        password = password.trim().to_string();
     
-        match get_user_by_id(&db_url, num) {
+        match get_user_by_id(&db_url, num, password) {
             Ok(user_json) => {
                 println!("User found: {}", user_json);
             }
@@ -103,6 +123,7 @@ fn edit_user_menu(db_url: &str){
     let mut num = String::new();
     let mut choice = String::new();
     let mut name = String::new();
+    let mut password = String::new();
 
     let (status_line, user_json) = get_all_users(&db_url);
 
@@ -125,7 +146,12 @@ fn edit_user_menu(db_url: &str){
     
     let email = check_email();
 
-    match edit_user_by_id(&db_url, num, &name, &email){
+    print!("password: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut password).expect("Failed to read line");
+    password = password.trim().to_string();
+
+    match edit_user_by_id(&db_url, num, &name, &email, &password){
 
         Ok(result)=>{
 
@@ -143,6 +169,7 @@ fn edit_user_menu(db_url: &str){
 fn delete_user_menu(db_url: &str){
 
     let mut num = String::new();
+    let mut password = String::new();
 
     let (status_line, user_json) = get_all_users(&db_url);
 
@@ -158,8 +185,14 @@ fn delete_user_menu(db_url: &str){
     
     let num: i32 = num.trim().parse().expect("REASON");
 
+
+    print!("password: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut password).expect("Failed to read line");
+    password = password.trim().to_string();
+
   
-    match delete_user_by_id(&db_url, num) {
+    match delete_user_by_id(&db_url, num, password) {
 
         Ok(result)=>{
 
@@ -178,14 +211,14 @@ fn delete_user_menu(db_url: &str){
 
 //CLI functions
 
-fn post_user(db_url: &str, name: &str, email:&str) -> Result<String, Box<dyn Error>> {
+fn post_user(db_url: &str, name: &str, email:&str, password:&str, date:&str) -> Result<String, Box<dyn Error>> {
     // Connect to the database
     let mut client = Client::connect(db_url, NoTls)?;
 
     // Insert the new user into the database
     let result = client.execute(
-        "INSERT INTO users (name, email) VALUES ($1, $2)",
-        &[&name, &email],
+        "INSERT INTO users (name, email, password, date) VALUES ($1, $2, $3, $4)",
+        &[&name, &email, &password, &date],
     );
 
     // Check if the insertion was successful
@@ -195,12 +228,12 @@ fn post_user(db_url: &str, name: &str, email:&str) -> Result<String, Box<dyn Err
     }
 }
 
-fn get_user_by_id(db_url: &str, user_id: i32) -> Result<String, Box<dyn Error>> {
+fn get_user_by_id(db_url: &str, user_id: i32, password: String) -> Result<String, Box<dyn Error>> {
     
     let mut client = Client::connect(db_url, NoTls)?;
 
     // Query for the user
-    let result = client.query_opt("SELECT id, name, email FROM users WHERE id = $1", &[&user_id]);
+    let result = client.query_opt("SELECT id, name, email FROM users WHERE id = $1 and password = $2", &[&user_id, &password]);
 
     // Check if the user exists
     match result {
@@ -231,32 +264,37 @@ fn get_all_users(db_url: &str) -> (String, String) {
 
     let mut users = Vec::new();
 
-    match client.query("SELECT id, name, email FROM users", &[]) {
+    match client.query("SELECT id, name, email, password date FROM users", &[]) {
         Ok(rows) => {
             for row in rows {
                 users.push(User {
                     id: row.get(0),
                     name: row.get(1),
-                    email: row.get(2),
+                    email: "*********",
+                    password: "********",
+                    date: row.get(4)
+                    
                 });
-            }
             (OK_RESPONSE.to_string(), serde_json::to_string(&users).unwrap())
         }
+
+    }
         Err(e) => {
             (INTERNAL_ERROR.to_string(), format!("Error querying the database: {}", e))
-        }
     }
 }
 
-fn edit_user_by_id(db_url: &str, user_id: i32, name: &str, email:&str) -> Result<String, Box<dyn Error>> {
+}
+
+fn edit_user_by_id(db_url: &str, user_id: i32, name: &str, email:&str, password:&str) -> Result<String, Box<dyn Error>> {
 
 
     let mut client = Client::connect(db_url, NoTls)?;
     
     
     let result = client.execute(
-        "UPDATE users SET name = $1, email = $2 WHERE id = $3",
-                    &[&name, &email, &user_id],
+        "UPDATE users SET name = $1, email = $2 WHERE id = $3 and password = $4",
+                    &[&name, &email, &user_id, &password],
     );
 
     
@@ -266,13 +304,13 @@ fn edit_user_by_id(db_url: &str, user_id: i32, name: &str, email:&str) -> Result
     }
     }
 
-fn delete_user_by_id(db_url: &str, user_id: i32) -> Result<String, Box<dyn Error>> {
+fn delete_user_by_id(db_url: &str, user_id: i32, password: String) -> Result<String, Box<dyn Error>> {
 
     let mut client = Client::connect(db_url, NoTls)?;
 
 
     let result = client.execute(
-        "DELETE FROM users WHERE id = $1", &[&user_id],
+        "DELETE FROM users WHERE id = $1 and password = $2", &[&user_id, &password],
     );
 
 
@@ -343,7 +381,9 @@ fn set_database(db_url: &str) -> Result<(), PostgresError> {
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name VARCHAR NOT NULL,
-            email VARCHAR NOT NULL
+            email VARCHAR NOT NULL,
+            password VARCHAR NOT NULL,
+            date VARCHAR NOT NULL
         )
     "
     )?;
