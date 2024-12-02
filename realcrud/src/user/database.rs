@@ -4,6 +4,7 @@ use bcrypt::{hash, verify};
 use serde_json::json;
 use crate::utils::verify_password;
 use crate::utils::hash_password;
+use chrono::prelude::*;
 
 
 pub const INTERNAL_ERROR: &str = "500 Internal Server Error";
@@ -32,6 +33,7 @@ pub fn set_database(db_url: &str) -> Result<(), PostgresError> {
             id SERIAL,
             post TEXT NOT NULL,
             name VARCHAR NOT NULL,
+            postdate VARCHAR NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
         ",
@@ -260,9 +262,15 @@ pub fn make_post(
     // Verify the password
     if verify_password(&current_password, &hashed_password)? {
         // Insert the post into the post table
+        let now = chrono::Utc::now();
+        now.format("%Y-%m-%d %H:%M:%S");
+
+        
+
+
         client.execute(
-            "INSERT INTO post (user_id, post, name) VALUES ($1, $2, $3)",
-            &[&user_id, &post_content, &name],
+            "INSERT INTO post (user_id, post, name, postdate) VALUES ($1, $2, $3, $4)",
+            &[&user_id, &post_content, &name, &now.to_string()],
         )?;
 
         Ok(format!("Post created successfully for user id {}", user_id))
@@ -279,7 +287,7 @@ pub fn get_all_posts(db_url: &str) -> Result<String, PostgresError> {
     // Query to fetch all posts along with user information
     let rows = client.query(
         "
-        SELECT users.name, post.post
+        SELECT users.name, post.post, post.postdate
         FROM post
         JOIN users ON post.user_id = users.id
         ORDER BY post.id DESC
@@ -293,10 +301,11 @@ pub fn get_all_posts(db_url: &str) -> Result<String, PostgresError> {
     for row in rows {
         let user_name: String = row.get(0);
         let post_content: String = row.get(1);
+        let post_time: String = row.get(2);
         
         posts.push(format!(
-            "Post by {} : \n{}\n", 
-            user_name, post_content
+            "=======================\n{} ''tweeted'': \n\n{}\n\nPosted at: {}\n=======================\n", 
+            user_name, post_content, post_time
         ));
     }
 
@@ -317,7 +326,7 @@ pub fn get_all_posts_by_me(db_url: &str, email: &str) -> Result<String, Postgres
     // Query to fetch all posts along with user information
     let rows = client.query(
         "
-        SELECT users.name, post.post
+        SELECT users.name, post.post, post.postdate
         FROM post
         JOIN users ON post.user_id = users.id 
         WHERE users.email = $1
@@ -332,10 +341,11 @@ pub fn get_all_posts_by_me(db_url: &str, email: &str) -> Result<String, Postgres
     for row in rows {
         let user_name: String = row.get(0);
         let post_content: String = row.get(1);
+        let post_time: String = row.get(2);
         
         posts.push(format!(
-            "Post by {} : \n{}\n", 
-            user_name, post_content
+            "=======================\nYOU! {} ''tweeted'': \n\n{}\n\nPosted at: {}\n=======================\n", 
+            user_name, post_content, post_time
         ));
     }
 

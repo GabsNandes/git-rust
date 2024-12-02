@@ -12,6 +12,7 @@ bcrypt = "0.12"
 regex = "1.7"
 dotenv = "0.15"
 time = "0.3"
+chrono = "0.4"
 
 [features]
 default = []

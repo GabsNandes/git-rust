@@ -38,32 +38,57 @@ pub fn select_date() -> String {
         let mut month = String::new();
         let mut year = String::new();
 
-        print!("Day: ");
+        let months31: Vec<i32> = vec![1, 3, 5, 7, 8, 10, 12]; 
+        let months30: Vec<i32> = vec![4, 6, 9, 11];          
+        
+        print!("Year: ");
         io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut day).expect("Failed to read line");
+        io::stdin().read_line(&mut year).expect("Failed to read line");
 
         print!("Month: ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut month).expect("Failed to read line");
 
-        print!("Year: ");
-        io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut year).expect("Failed to read line");
-
-        // Trim and parse input
-        if let (Ok(day), Ok(month), Ok(year)) = (
-            day.trim().parse::<u32>(),
-            month.trim().parse::<u32>(),
-            year.trim().parse::<u32>(),
+        // Trim and parse inputs
+        if let (Ok(month), Ok(year)) = (
+            month.trim().parse::<i32>(),
+            year.trim().parse::<i32>(),
         ) {
-            // Validate date ranges
-            if (1..=31).contains(&day) && (1..=12).contains(&month) && (1900..=2024).contains(&year) {
-                return format!("{:02}-{:02}-{}", day, month, year);
+            let final_day = if months31.contains(&month) {
+                31
+            } else if months30.contains(&month) {
+                30
+            } else if month == 2 {
+                if is_leap_year(year) {
+                    29
+                } else {
+                    28
+                }
             } else {
-                println!("Invalid date. Please try again.");
+                println!("Invalid month. Please try again.");
+                continue;
+            };
+
+            print!("Day: ");
+            io::stdout().flush().unwrap();
+            io::stdin().read_line(&mut day).expect("Failed to read line");
+
+            // Parse and validate the day
+            if let Ok(day) = day.trim().parse::<i32>() {
+                if (1..=final_day).contains(&day) && (1900..=2024).contains(&year) {
+                    return format!("{:02}-{:02}-{}", day, month, year);
+                } else {
+                    println!("Invalid date. Please try again.");
+                }
+            } else {
+                println!("Invalid day. Please enter a numeric value.");
             }
         } else {
-            println!("Invalid input. Please enter numeric values.");
+            println!("Invalid input. Please enter numeric values for month and year.");
         }
     }
+}
+
+fn is_leap_year(year: i32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
