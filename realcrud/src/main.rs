@@ -26,11 +26,13 @@ fn main() {
 
     loop {
         println!(
-            "Choose an option:\n\
+            "Welcome to (NOT) twitter:\n\
              1 - Create a new user\n\
              2 - Read user\n\
              3 - Edit user\n\
-             4 - Delete user\n\
+             4 - Post Something \n\
+             5 - Read Posts \n\
+             6 - Delete user\n\
              Any other key - Exit"
         );
 
@@ -43,7 +45,9 @@ fn main() {
             "1" => create_user_menu(&db_url),
             "2" => read_user_menu(&db_url),
             "3" => edit_user_menu(&db_url),
-            "4" => delete_user_menu(&db_url),
+            "4" => make_post_menu(&db_url),
+            "5" => read_post_menu(&db_url),
+            "6" => delete_user_menu(&db_url),
             _ => {
                 println!("Exiting...");
                 break;
