@@ -29,9 +29,10 @@ pub fn set_database(db_url: &str) -> Result<(), PostgresError> {
         "
         CREATE TABLE IF NOT EXISTS post (
             user_id INTEGER PRIMARY KEY,
+            id INTERGER NOT NULL,
             post TEXT NOT NULL,
             name VARCHAR NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
         );
         ",
     )?;
