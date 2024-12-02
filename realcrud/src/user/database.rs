@@ -239,7 +239,7 @@ pub fn make_post(db_url: &str, email: &str, current_password: &str, post_content
             let poster_name: String = row.get(2);
 
             // Verify the password
-            if verify(current_password, &hashed_password)? {
+            if verify(&current_password, &hashed_password)? {
                 // Insert the post into the post table
                 client.execute(
                     "INSERT INTO post (user_id, post, name) VALUES ($1, $2, $3)",
