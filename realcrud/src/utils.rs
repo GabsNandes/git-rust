@@ -21,6 +21,7 @@ pub fn check_email() -> String {
     loop {
         print!("Email: ");
         io::stdout().flush().unwrap();
+        email.clear();
         io::stdin().read_line(&mut email).expect("Failed to read line");
         email = email.trim().to_string();
         if validate_email(&email) {
@@ -40,13 +41,15 @@ pub fn select_date() -> String {
 
         let months31: Vec<i32> = vec![1, 3, 5, 7, 8, 10, 12]; 
         let months30: Vec<i32> = vec![4, 6, 9, 11];          
-        
+
         print!("Year: ");
         io::stdout().flush().unwrap();
+        year.clear();
         io::stdin().read_line(&mut year).expect("Failed to read line");
 
         print!("Month: ");
         io::stdout().flush().unwrap();
+        month.clear();
         io::stdin().read_line(&mut month).expect("Failed to read line");
 
         // Trim and parse inputs
@@ -71,6 +74,7 @@ pub fn select_date() -> String {
 
             print!("Day: ");
             io::stdout().flush().unwrap();
+            day.clear();
             io::stdin().read_line(&mut day).expect("Failed to read line");
 
             // Parse and validate the day

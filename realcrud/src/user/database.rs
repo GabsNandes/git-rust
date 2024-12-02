@@ -42,7 +42,6 @@ pub fn set_database(db_url: &str) -> Result<(), PostgresError> {
     Ok(())
 }
 
-
 pub fn post_user(
     db_url: &str,
     name: &str,
@@ -50,14 +49,28 @@ pub fn post_user(
     password: &str,
     date: &UserDate,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let hashed_password = hash(password, 4)?;
     let mut client = Client::connect(db_url, NoTls)?;
+
+    // Check if a user with the same name already exists
+    let result = client.query_opt(
+        "SELECT id FROM users WHERE name = $1",
+        &[&name],
+    )?;
+
+    if result.is_some() {
+        return Ok("User with this name already exists.".to_string());
+    }
+
+    // If no user exists with the same name, hash the password and insert the new user
+    let hashed_password = hash(password, 4)?;
     client.execute(
         "INSERT INTO users (name, email, password, date) VALUES ($1, $2, $3, $4)",
         &[&name, &email, &hashed_password, &date.to_db_string()],
     )?;
+
     Ok("User created successfully".to_string())
 }
+
 
 
 
