@@ -29,7 +29,7 @@ pub fn set_database(db_url: &str) -> Result<(), PostgresError> {
         "
         CREATE TABLE IF NOT EXISTS post (
             user_id INTEGER PRIMARY KEY,
-            id INTERGER NOT NULL,
+            id SERIAL,
             post TEXT NOT NULL,
             name VARCHAR NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id)
@@ -194,24 +194,32 @@ pub fn delete_user_by_email(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut client = Client::connect(db_url, NoTls)?;
 
-    // Fetch the user's hashed password
+    // Fetch the user's hashed password and ID
     let result = client.query_opt(
-        "SELECT password FROM users WHERE email = $1",
+        "SELECT password, id FROM users WHERE email = $1",
         &[&email],
     );
 
     match result {
         Ok(Some(row)) => {
             let hashed_password: String = row.get(0);
+            let user_id: i32 = row.get(1);
 
             // Verify the provided password against the hashed password
             if verify_password(&password, &hashed_password)? {
-                // If the password is correct, delete the user
+                // Delete user's posts first
+                client.execute(
+                    "DELETE FROM post WHERE user_id = $1",
+                    &[&user_id],
+                )?;
+                
+                // Delete the user
                 client.execute(
                     "DELETE FROM users WHERE email = $1",
                     &[&email],
                 )?;
-                Ok("User deleted successfully".to_string())
+
+                Ok("User and associated posts deleted successfully".to_string())
             } else {
                 Ok("Invalid password".to_string())
             }
@@ -220,8 +228,14 @@ pub fn delete_user_by_email(
         Err(e) => Err(Box::new(e)), // Handle query errors
     }
 }
+
 // Define the make_post function
-pub fn make_post(db_url: &str, email: &str, current_password: &str, post_content: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn make_post(
+    db_url: &str,
+    email: &str,
+    current_password: &str,
+    post_content: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     // Connect to the database
     let mut client = Client::connect(db_url, NoTls)?;
 
@@ -232,31 +246,31 @@ pub fn make_post(db_url: &str, email: &str, current_password: &str, post_content
     );
 
     // Handle the case where the user is not found
-    match result {
+    let (hashed_password, user_id, name) = match result {
         Ok(Some(row)) => {
             let hashed_password: String = row.get(0);
             let user_id: i32 = row.get(1);
-            let poster_name: String = row.get(2);
+            let name: String = row.get(2);
+            (hashed_password, user_id, name)
+        }
+        Ok(None) => return Ok("User not found.".to_string()),
+        Err(e) => return Err(Box::new(e)),
+    };
 
-            // Verify the password
-            if verify(&current_password, &hashed_password)? {
-                // Insert the post into the post table
-                client.execute(
-                    "INSERT INTO post (user_id, post, name) VALUES ($1, $2, $3)",
-                    &[&user_id, &post_content, &poster_name],
-                )?;
+    // Verify the password
+    if verify_password(&current_password, &hashed_password)? {
+        // Insert the post into the post table
+        client.execute(
+            "INSERT INTO post (user_id, post, name) VALUES ($1, $2, $3)",
+            &[&user_id, &post_content, &name],
+        )?;
 
-                Ok(format!("Post created successfully for user id {}", user_id))
-            } else {
-                // Return an error message if the password is incorrect
-                Ok("Incorrect password.".to_string())
-            }
-        },
-        Ok(None) => Ok("User not found".to_string()),
-        Err(e) => Err(Box::new(e)), // Handle query errors
+        Ok(format!("Post created successfully for user id {}", user_id))
+    } else {
+        Ok("Incorrect password.".to_string())
     }
-
 }
+
 
 pub fn get_all_posts(db_url: &str) -> Result<String, PostgresError> {
     // Connect to the database
@@ -332,4 +346,6 @@ pub fn get_all_posts_by_me(db_url: &str, email: &str) -> Result<String, Postgres
         Ok(posts.join("\n"))
     }
 }
+
+
 

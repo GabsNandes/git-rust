@@ -194,7 +194,7 @@ pub fn make_post_menu(db_url: &str){
 
     print!("post: ");
     io::stdout().flush().unwrap();
-    io::stdin().read_line(&mut password).expect("Failed to read line");
+    io::stdin().read_line(&mut post).expect("Failed to read line");
     post = post.trim().to_string();
 
   
