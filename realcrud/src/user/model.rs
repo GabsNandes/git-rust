@@ -1,8 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde_derive::Serialize;
+use serde_derive::Deserialize;
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum UserDate {
-    CreationDate(String),
+    BirthDate(String),
     LastLogin(String),
     Unknown,
 }
@@ -10,7 +12,7 @@ pub enum UserDate {
 impl UserDate {
     pub fn to_db_string(&self) -> String {
         match self {
-            UserDate::CreationDate(date) | UserDate::LastLogin(date) => date.clone(),
+            UserDate::BirthDate(date) | UserDate::LastLogin(date) => date.clone(),
             UserDate::Unknown => "Unknown".to_string(),
         }
     }
@@ -19,7 +21,7 @@ impl UserDate {
         if date.is_empty() || date == "Unknown" {
             UserDate::Unknown
         } else {
-            UserDate::CreationDate(date.to_string())
+            UserDate::BirthDate(date.to_string())
         }
     }
 }

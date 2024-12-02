@@ -1,6 +1,7 @@
 use crate::user::database::*;
 use crate::utils::select_date;
 use std::io::{self, Write};
+use crate::UserDate;
 
 
 pub fn create_user_menu(db_url: &str) {
@@ -12,7 +13,7 @@ pub fn create_user_menu(db_url: &str) {
     io::stdin().read_line(&mut name).expect("Failed to read line");
     name = name.trim().to_string();
 
-    print!("Email: ");
+
     io::stdout().flush().unwrap();
     let email = crate::utils::check_email();
 
@@ -23,7 +24,7 @@ pub fn create_user_menu(db_url: &str) {
     io::stdin().read_line(&mut password).expect("Failed to read line");
     password = password.trim().to_string();
 
-    match post_user(db_url, &name, &email, &password, &UserDate::CreationDate(date)) {
+    match post_user(db_url, &name, &email, &password, &UserDate::BirthDate(date)) {
         Ok(response) => println!("{}", response),
         Err(e) => eprintln!("Error creating user: {}", e),
     }

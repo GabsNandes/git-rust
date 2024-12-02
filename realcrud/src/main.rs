@@ -1,6 +1,5 @@
 use std::env;
 use std::io::{self, Write};
-use std::net::TcpListener;
 
 pub mod user;
 pub mod utils;
@@ -24,10 +23,6 @@ fn main() {
         eprintln!("Error setting up the database: {}", e);
         return;
     }
-
-    // Start the server
-    let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
-    println!("Server listening on port 8080");
 
     loop {
         println!(

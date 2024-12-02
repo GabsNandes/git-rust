@@ -1,13 +1,16 @@
 use postgres::{Client, NoTls, Error as PostgresError};
 use crate::user::model::{User, UserDate};
-use bcrypt::{hash, verify};
+use bcrypt::{hash};
 use serde_json::json;
 use crate::utils::verify_password;
 use crate::utils::hash_password;
-use crate::constants::{INTERNAL_ERROR, OK_RESPONSE};
+
+
+pub const INTERNAL_ERROR: &str = "500 Internal Server Error";
+pub const OK_RESPONSE: &str = "200 OK";
 
 // Database setup
-fn set_database(db_url: &str) -> Result<(), PostgresError> {
+pub fn set_database(db_url: &str) -> Result<(), PostgresError> {
     let mut client = Client::connect(db_url, NoTls)?;
     client.batch_execute(
         "
@@ -82,46 +85,53 @@ pub fn get_user_by_email(
 
 
 pub fn get_all_users(db_url: &str) -> (String, String) {
+    // Define constants
+    const INTERNAL_ERROR: &str = "500";
+    const OK_RESPONSE: &str = "200";
 
+    // Connect to the database
     let mut client = match Client::connect(db_url, NoTls) {
         Ok(client) => client,
-        Err(e) => return (INTERNAL_ERROR.to_string(), format!("Error connecting to the database: {}", e)),
+        Err(e) => {
+            return (
+                INTERNAL_ERROR.to_string(),
+                format!("Error connecting to the database: {}", e),
+            )
+        }
     };
 
     let mut users = Vec::new();
 
+    // Query the users table
     match client.query("SELECT id, name, email, password, date FROM users", &[]) {
         Ok(rows) => {
             for row in rows {
-                
-                users.push(User {
+                let user = User {
                     id: row.get(0),
                     name: row.get(1),
-                    email: "*********".to_string(),
-                    password: "*********".to_string(),
-                    date: match UserDate::from_db_string(&row.get::<_, String>(4)) {
-                        Ok(date) => date,
-                        Err(e) => {
-                            return (
-                                INTERNAL_ERROR.to_string(),
-                                format!("Error parsing date field: {}", e),
-                            )
-                        }
+                    email: "*********".to_string(), // Mask email
+                    password: "*********".to_string(), // Mask password
+                    date: {
+                        let db_date: String = row.get(4); // Retrieve as a string
+                        UserDate::from_db_string(&db_date) // Convert to UserDate
                     },
-
-                    
-                    
-                });
+                };
+                users.push(user);
             }
-        
-            (OK_RESPONSE.to_string(), serde_json::to_string(&users).unwrap())
-        
+
+            // Return success response
+            (
+                OK_RESPONSE.to_string(),
+                serde_json::to_string(&users).unwrap_or_else(|_| "[]".to_string()),
+            )
         }
-        Err(e) => {
-            (INTERNAL_ERROR.to_string(), format!("Error querying the database: {}", e))
-        }
+        Err(e) => (
+            INTERNAL_ERROR.to_string(),
+            format!("Error querying the database: {}", e),
+        ),
     }
 }
+
 
 pub fn edit_user_by_email(
     db_url: &str,

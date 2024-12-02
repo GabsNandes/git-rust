@@ -1,0 +1,4 @@
+cd realcrud
+docker-compose up -d db
+docker compose build   
+docker-compose run --rm rustapp        
